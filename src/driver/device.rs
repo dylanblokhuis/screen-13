@@ -636,7 +636,7 @@ impl FeatureFlags {
         #[cfg(target_os = "macos")]
         {
             res.extend([
-                vk::KhrBufferDeviceAddressFn::name(),
+                // vk::KhrBufferDeviceAddressFn::name(),
                 vk::KhrCreateRenderpass2Fn::name(),
                 vk::KhrImagelessFramebufferFn::name(),
                 vk::KhrImageFormatListFn::name(),
