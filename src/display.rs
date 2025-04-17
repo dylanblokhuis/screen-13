@@ -268,6 +268,10 @@ impl Display {
     pub fn swapchain_info(&self) -> SwapchainInfo {
         self.swapchain.info()
     }
+
+    pub fn images_len(&self) -> u32 {
+        self.swapchain.images_len()
+    }
 }
 
 impl Debug for Display {

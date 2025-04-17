@@ -458,6 +458,10 @@ impl Swapchain {
 
         Ok(res)
     }
+
+    pub fn images_len(&self) -> u32 {
+        self.images.len() as u32
+    }
 }
 
 impl Drop for Swapchain {
