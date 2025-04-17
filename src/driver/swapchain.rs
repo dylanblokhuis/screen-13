@@ -507,6 +507,11 @@ impl SwapchainImage {
             image_idx: *image_idx,
         }
     }
+
+    #[inline]
+    pub fn image_idx(&self) -> u32 {
+        self.image_idx
+    }
 }
 
 impl Deref for SwapchainImage {
