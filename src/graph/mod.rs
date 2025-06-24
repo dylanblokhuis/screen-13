@@ -34,14 +34,13 @@ use {
         buffer::Buffer,
         compute::ComputePipeline,
         device::Device,
-        format_aspect_mask, format_texel_block_size,
+        format_aspect_mask, format_texel_block_extent, format_texel_block_size,
         graphic::{DepthStencilMode, GraphicPipeline},
-        image::{ImageType, ImageViewInfo, SampleCount},
+        image::{ImageInfo, ImageViewInfo, SampleCount},
         image_subresource_range_from_layers,
         ray_trace::RayTracePipeline,
         render_pass::ResolveMode,
         shader::PipelineDescriptorInfo,
-        vk_sync::AccessType,
     },
     ash::vk,
     std::{
@@ -51,6 +50,7 @@ use {
         ops::Range,
         sync::Arc,
     },
+    vk_sync::AccessType,
 };
 
 type ExecFn = Box<dyn FnOnce(&Device, vk::CommandBuffer, Bindings<'_>) + Send>;
@@ -101,7 +101,7 @@ impl Attachment {
         Self::are_identical(lhs.unwrap(), rhs.unwrap())
     }
 
-    pub fn are_identical(lhs: Self, rhs: Self) -> bool {
+    fn are_identical(lhs: Self, rhs: Self) -> bool {
         lhs.array_layer_count == rhs.array_layer_count
             && lhs.base_array_layer == rhs.base_array_layer
             && lhs.base_mip_level == rhs.base_mip_level
@@ -109,6 +109,21 @@ impl Attachment {
             && lhs.mip_level_count == rhs.mip_level_count
             && lhs.sample_count == rhs.sample_count
             && lhs.target == rhs.target
+    }
+
+    fn image_view_info(self, image_info: ImageInfo) -> ImageViewInfo {
+        image_info
+            .to_builder()
+            .array_layer_count(self.array_layer_count)
+            .mip_level_count(self.mip_level_count)
+            .fmt(self.format)
+            .build()
+            .default_view_info()
+            .to_builder()
+            .aspect_mask(self.aspect_mask)
+            .base_array_layer(self.base_array_layer)
+            .base_mip_level(self.base_mip_level)
+            .build()
     }
 }
 
@@ -653,16 +668,17 @@ impl RenderGraph {
         let mut pass = self.begin_pass("copy buffer to image");
 
         for region in regions.as_ref() {
+            let block_bytes_size = format_texel_block_size(dst_info.fmt);
+            let (block_height, block_width) = format_texel_block_extent(dst_info.fmt);
+            let data_size = block_bytes_size
+                * (region.buffer_row_length / block_width)
+                * (region.buffer_image_height / block_height);
+
             pass = pass
                 .access_node_subrange(
                     src_node,
                     AccessType::TransferRead,
-                    region.buffer_offset
-                        ..region.buffer_offset
-                            + (region.buffer_row_length
-                                * format_texel_block_size(dst_info.fmt)
-                                * region.buffer_image_height)
-                                as vk::DeviceSize,
+                    region.buffer_offset..region.buffer_offset + data_size as vk::DeviceSize,
                 )
                 .access_node_subrange(
                     dst_node,
@@ -688,7 +704,7 @@ impl RenderGraph {
         .submit_pass()
     }
 
-    /// Copy data between images.
+    /// Copy all layers of a source image to a destination image.
     pub fn copy_image(
         &mut self,
         src_node: impl Into<AnyImageNode>,
@@ -708,22 +724,14 @@ impl RenderGraph {
                     aspect_mask: format_aspect_mask(src_info.fmt),
                     mip_level: 0,
                     base_array_layer: 0,
-                    layer_count: if matches!(src_info.ty, ImageType::Cube | ImageType::CubeArray) {
-                        6
-                    } else {
-                        1
-                    },
+                    layer_count: src_info.array_layer_count,
                 },
                 src_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
                 dst_subresource: vk::ImageSubresourceLayers {
                     aspect_mask: format_aspect_mask(dst_info.fmt),
                     mip_level: 0,
                     base_array_layer: 0,
-                    layer_count: if matches!(dst_info.ty, ImageType::Cube | ImageType::CubeArray) {
-                        6
-                    } else {
-                        1
-                    },
+                    layer_count: src_info.array_layer_count,
                 },
                 dst_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
                 extent: vk::Extent3D {
@@ -849,6 +857,12 @@ impl RenderGraph {
         let mut pass = self.begin_pass("copy image to buffer");
 
         for region in regions.as_ref() {
+            let block_bytes_size = format_texel_block_size(src_info.fmt);
+            let (block_height, block_width) = format_texel_block_extent(src_info.fmt);
+            let data_size = block_bytes_size
+                * (region.buffer_row_length / block_width)
+                * (region.buffer_image_height / block_height);
+
             pass = pass
                 .access_node_subrange(
                     src_node,
@@ -858,12 +872,7 @@ impl RenderGraph {
                 .access_node_subrange(
                     dst_node,
                     AccessType::TransferWrite,
-                    region.buffer_offset
-                        ..region.buffer_offset
-                            + (region.buffer_row_length
-                                * format_texel_block_size(src_info.fmt)
-                                * region.buffer_image_height)
-                                as vk::DeviceSize,
+                    region.buffer_offset..region.buffer_offset + data_size as vk::DeviceSize,
                 );
         }
 
