@@ -9,13 +9,13 @@ use {
         AllocatorDebugSettings,
         vulkan::{Allocator, AllocatorCreateDesc},
     },
-    log::{error, trace, warn},
+    log::{error, info, trace, warn},
     raw_window_handle::HasDisplayHandle,
     std::{
         cmp::Ordering,
         ffi::CStr,
         fmt::{Debug, Formatter},
-        iter::{empty, repeat},
+        iter::{empty, repeat_n},
         mem::{ManuallyDrop, forget},
         ops::Deref,
         thread::panicking,
@@ -98,16 +98,16 @@ impl Device {
             enabled_ext_names.push(ext::index_type_uint8::NAME.as_ptr());
         }
 
-        let priorities = repeat(1.0)
-            .take(
-                physical_device
-                    .queue_families
-                    .iter()
-                    .map(|family| family.queue_count)
-                    .max()
-                    .unwrap_or_default() as _,
-            )
-            .collect::<Box<_>>();
+        let priorities = repeat_n(
+            1.0,
+            physical_device
+                .queue_families
+                .iter()
+                .map(|family| family.queue_count)
+                .max()
+                .unwrap_or_default() as _,
+        )
+        .collect::<Box<_>>();
 
         let queue_infos = physical_device
             .queue_families
@@ -203,6 +203,8 @@ impl Device {
 
             DriverError::Unsupported
         })?;
+
+        info!("created {}", physical_device.properties_v1_0.device_name);
 
         Self::load(instance, physical_device, device, display_window)
     }

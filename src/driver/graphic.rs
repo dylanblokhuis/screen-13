@@ -119,29 +119,27 @@ impl BlendMode {
     pub fn new() -> BlendModeBuilder {
         BlendModeBuilder::default()
     }
-
-    pub(super) fn into_vk(self) -> vk::PipelineColorBlendAttachmentState {
-        vk::PipelineColorBlendAttachmentState {
-            blend_enable: if self.blend_enable {
-                vk::TRUE
-            } else {
-                vk::FALSE
-            },
-            src_color_blend_factor: self.src_color_blend_factor,
-            dst_color_blend_factor: self.dst_color_blend_factor,
-            color_blend_op: self.color_blend_op,
-            src_alpha_blend_factor: self.src_alpha_blend_factor,
-            dst_alpha_blend_factor: self.dst_alpha_blend_factor,
-            alpha_blend_op: self.alpha_blend_op,
-            color_write_mask: self.color_write_mask,
-        }
-    }
 }
 
 // the Builder derive Macro wants Default to be implemented for BlendMode
 impl Default for BlendMode {
     fn default() -> Self {
         Self::REPLACE
+    }
+}
+
+impl From<BlendMode> for vk::PipelineColorBlendAttachmentState {
+    fn from(mode: BlendMode) -> Self {
+        Self {
+            blend_enable: mode.blend_enable as _,
+            src_color_blend_factor: mode.src_color_blend_factor,
+            dst_color_blend_factor: mode.dst_color_blend_factor,
+            color_blend_op: mode.color_blend_op,
+            src_alpha_blend_factor: mode.src_alpha_blend_factor,
+            dst_alpha_blend_factor: mode.dst_alpha_blend_factor,
+            alpha_blend_op: mode.alpha_blend_op,
+            color_write_mask: mode.color_write_mask,
+        }
     }
 }
 
@@ -273,20 +271,20 @@ impl DepthStencilMode {
     pub fn new() -> DepthStencilModeBuilder {
         DepthStencilModeBuilder::default()
     }
+}
 
-    pub(super) fn into_vk(self) -> vk::PipelineDepthStencilStateCreateInfo<'static> {
-        vk::PipelineDepthStencilStateCreateInfo {
-            back: self.back.into_vk(),
-            depth_bounds_test_enable: self.bounds_test as _,
-            depth_compare_op: self.compare_op,
-            depth_test_enable: self.depth_test as _,
-            depth_write_enable: self.depth_write as _,
-            front: self.front.into_vk(),
-            max_depth_bounds: *self.max,
-            min_depth_bounds: *self.min,
-            stencil_test_enable: self.stencil_test as _,
-            ..Default::default()
-        }
+impl From<DepthStencilMode> for vk::PipelineDepthStencilStateCreateInfo<'_> {
+    fn from(mode: DepthStencilMode) -> Self {
+        Self::default()
+            .back(mode.back.into())
+            .depth_bounds_test_enable(mode.bounds_test as _)
+            .depth_compare_op(mode.compare_op)
+            .depth_test_enable(mode.depth_test as _)
+            .depth_write_enable(mode.depth_write as _)
+            .front(mode.front.into())
+            .max_depth_bounds(mode.max.into_inner())
+            .min_depth_bounds(mode.min.into_inner())
+            .stencil_test_enable(mode.stencil_test as _)
     }
 }
 
@@ -544,10 +542,31 @@ impl GraphicPipeline {
                     stages.push(shader_stage);
                 });
 
-            let multisample = MultisampleState {
+            let mut multisample = MultisampleState {
+                alpha_to_coverage_enable: info.alpha_to_coverage,
+                alpha_to_one_enable: info.alpha_to_one,
                 rasterization_samples: info.samples,
                 ..Default::default()
             };
+
+            if let Some(OrderedFloat(min_sample_shading)) = info.min_sample_shading {
+                #[cfg(debug_assertions)]
+                if info.samples.is_single() {
+                    // This combination of a single-sampled pipeline and minimum sample shading
+                    // does not make sense and should not be requested. In the future maybe this is
+                    // part of the MSAA value so it can't be specified.
+                    warn!("unsupported sample rate shading of single-sample pipeline");
+                }
+
+                // Callers should check this before attempting to use the feature
+                debug_assert!(
+                    device.physical_device.features_v1_0.sample_rate_shading,
+                    "unsupported sample rate shading feature"
+                );
+
+                multisample.sample_shading_enable = true;
+                multisample.min_sample_shading = min_sample_shading;
+            }
 
             let push_constants = merge_push_constant_ranges(&push_constants);
 
@@ -610,6 +629,16 @@ impl Drop for GraphicPipeline {
 )]
 #[non_exhaustive]
 pub struct GraphicPipelineInfo {
+    /// Controls whether a temporary coverage value is generated based on the alpha component of the
+    /// fragment’s first color output.
+    #[builder(default)]
+    pub alpha_to_coverage: bool,
+
+    /// Controls whether the alpha component of the fragment’s first color output is replaced with
+    /// one.
+    #[builder(default)]
+    pub alpha_to_one: bool,
+
     /// The number of descriptors to allocate for a given binding when using bindless (unbounded)
     /// syntax.
     ///
@@ -654,6 +683,10 @@ pub struct GraphicPipelineInfo {
     #[builder(default = "vk::FrontFace::COUNTER_CLOCKWISE")]
     pub front_face: vk::FrontFace,
 
+    /// Specify a fraction of the minimum number of unique samples to process for each fragment.
+    #[builder(default, setter(into, strip_option))]
+    pub min_sample_shading: Option<OrderedFloat<f32>>,
+
     /// Control polygon rasterization mode.
     ///
     /// The default value is `vk::PolygonMode::FILL`.
@@ -686,10 +719,13 @@ impl GraphicPipelineInfo {
     #[inline(always)]
     pub fn to_builder(self) -> GraphicPipelineInfoBuilder {
         GraphicPipelineInfoBuilder {
+            alpha_to_coverage: Some(self.alpha_to_coverage),
+            alpha_to_one: Some(self.alpha_to_one),
             bindless_descriptor_count: Some(self.bindless_descriptor_count),
             blend: Some(self.blend),
             cull_mode: Some(self.cull_mode),
             front_face: Some(self.front_face),
+            min_sample_shading: Some(self.min_sample_shading),
             polygon_mode: Some(self.polygon_mode),
             topology: Some(self.topology),
             samples: Some(self.samples),
@@ -700,10 +736,13 @@ impl GraphicPipelineInfo {
 impl Default for GraphicPipelineInfo {
     fn default() -> Self {
         Self {
+            alpha_to_coverage: false,
+            alpha_to_one: false,
             bindless_descriptor_count: 8192,
             blend: BlendMode::REPLACE,
             cull_mode: vk::CullModeFlags::BACK,
             front_face: vk::FrontFace::COUNTER_CLOCKWISE,
+            min_sample_shading: None,
             polygon_mode: vk::PolygonMode::FILL,
             topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             samples: SampleCount::Type1,
@@ -809,23 +848,25 @@ impl StencilMode {
         write_mask: 0,
         reference: 0,
     };
-
-    fn into_vk(self) -> vk::StencilOpState {
-        vk::StencilOpState {
-            fail_op: self.fail_op,
-            pass_op: self.pass_op,
-            depth_fail_op: self.depth_fail_op,
-            compare_op: self.compare_op,
-            compare_mask: self.compare_mask,
-            write_mask: self.write_mask,
-            reference: self.reference,
-        }
-    }
 }
 
 impl Default for StencilMode {
     fn default() -> Self {
         Self::IGNORE
+    }
+}
+
+impl From<StencilMode> for vk::StencilOpState {
+    fn from(mode: StencilMode) -> Self {
+        Self {
+            fail_op: mode.fail_op,
+            pass_op: mode.pass_op,
+            depth_fail_op: mode.depth_fail_op,
+            compare_op: mode.compare_op,
+            compare_mask: mode.compare_mask,
+            write_mask: mode.write_mask,
+            reference: mode.reference,
+        }
     }
 }
 
