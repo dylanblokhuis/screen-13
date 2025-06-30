@@ -80,31 +80,31 @@ unsafe extern "system" fn vulkan_debug_callback(
 
         error!("🆘 {message}");
 
-        if !logger().enabled(&Metadata::builder().level(Level::Debug).build())
-            || var("RUST_LOG")
-                .map(|rust_log| rust_log.is_empty())
-                .unwrap_or(true)
-        {
-            eprintln!(
-                "note: run with `RUST_LOG=trace` environment variable to display more information"
-            );
-            eprintln!("note: see https://github.com/rust-lang/log#in-executables");
-            abort()
-        }
+        // if !logger().enabled(&Metadata::builder().level(Level::Debug).build())
+        //     || var("RUST_LOG")
+        //         .map(|rust_log| rust_log.is_empty())
+        //         .unwrap_or(true)
+        // {
+        //     eprintln!(
+        //         "note: run with `RUST_LOG=trace` environment variable to display more information"
+        //     );
+        //     eprintln!("note: see https://github.com/rust-lang/log#in-executables");
+        //     abort()
+        // }
 
-        if current().name() != Some("main") {
-            warn!("executing on a child thread!")
-        }
+        // if current().name() != Some("main") {
+        //     warn!("executing on a child thread!")
+        // }
 
-        debug!(
-            "🛑 PARKING THREAD `{}` -> attach debugger to pid {}!",
-            current().name().unwrap_or_default(),
-            id()
-        );
+        // debug!(
+        //     "🛑 PARKING THREAD `{}` -> attach debugger to pid {}!",
+        //     current().name().unwrap_or_default(),
+        //     id()
+        // );
 
-        logger().flush();
+        // logger().flush();
 
-        park();
+        // park();
     }
 
     vk::FALSE
