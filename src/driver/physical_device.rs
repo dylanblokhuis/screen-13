@@ -173,7 +173,8 @@ pub struct PhysicalDevice {
     /// feature set.
     pub properties_v1_2: Vulkan12Properties,
 
-    physical_device: vk::PhysicalDevice,
+    /// The physical device handle.
+    pub physical_device: vk::PhysicalDevice,
 
     /// Describes the queues offered by this physical device.
     pub queue_families: Box<[vk::QueueFamilyProperties]>,

@@ -41,7 +41,7 @@ pub struct Device {
     device: ash::Device,
 
     /// Vulkan instance pointer, which includes useful functions.
-    instance: Instance,
+    pub instance: Instance,
 
     pipeline_cache: vk::PipelineCache,
 

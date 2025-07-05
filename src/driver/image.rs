@@ -387,8 +387,9 @@ impl Image {
         }
     }
 
+    /// Creates a new image view for this image.
     #[profiling::function]
-    pub(crate) fn view(this: &Self, info: ImageViewInfo) -> Result<vk::ImageView, DriverError> {
+    pub fn view(this: &Self, info: ImageViewInfo) -> Result<vk::ImageView, DriverError> {
         #[cfg_attr(not(feature = "parking_lot"), allow(unused_mut))]
         let mut image_view_cache = this.image_view_cache.lock();
 
