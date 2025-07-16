@@ -154,6 +154,37 @@ impl Device {
             features = features.push_next(&mut index_type_uint8_features);
         }
 
+        let extensions = unsafe {
+            instance.enumerate_device_extension_properties(physical_device.physical_device)?
+        };
+        let extension_names = extensions
+            .iter()
+            .map(|extension| unsafe {
+                CStr::from_ptr(extension.extension_name.as_ptr())
+                    .to_str()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        // check for coherent memory extension if amd device
+        let is_amd = extension_names
+            .iter()
+            .any(|ext| *ext == "VK_AMD_device_coherent_memory");
+
+        let mut amd_coherent_mem =
+            vk::PhysicalDeviceCoherentMemoryFeaturesAMD::default().device_coherent_memory(true);
+
+        let mut synchronization2_features =
+            vk::PhysicalDeviceSynchronization2Features::default().synchronization2(true);
+
+        if is_amd {
+            enabled_ext_names.push(ash::amd::device_coherent_memory::NAME.as_ptr());
+            enabled_ext_names.push(ash::khr::synchronization2::NAME.as_ptr());
+            features = features
+                .push_next(&mut amd_coherent_mem)
+                .push_next(&mut synchronization2_features);
+        }
+
         unsafe { get_physical_device_features2(**physical_device, &mut features) };
 
         let device_create_info = vk::DeviceCreateInfo::default()
