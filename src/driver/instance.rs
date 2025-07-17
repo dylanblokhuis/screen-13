@@ -137,7 +137,13 @@ impl Instance {
         }
 
         #[cfg(not(target_os = "macos"))]
-        let entry = Entry::linked();
+        let entry = unsafe {
+            Entry::load().map_err(|err| {
+                error!("Vulkan driver not found: {err}");
+
+                DriverError::Unsupported
+            })?
+        };
 
         #[cfg(target_os = "macos")]
         let entry = ash_molten::load();

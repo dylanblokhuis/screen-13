@@ -20,7 +20,7 @@ profile-with-superluminal = ["profiling/profile-with-superluminal"]
 profile-with-tracy = ["profiling/profile-with-tracy"]
 
 [dependencies]
-ash = { version = "0.38", features = ["linked"] }
+ash = "0.38"
 ash-window = "0.13"
 derive_builder = "0.20"
 gpu-allocator = "0.27"
@@ -34,7 +34,6 @@ spirq = "1.2"
 vk-sync = { version = "0.5", package = "vk-sync-fork" } # // SEE: https://github.com/gwihlidal/vk-sync-rs/pull/4 -> https://github.com/expenses/vk-sync-rs
 
 [target.'cfg(target_os = "macos")'.dependencies]
-ash = { version = "0.38", default-features = false } # no "linked" feature on macOS
 ash-molten = "0.20"
 
 [dev-dependencies]
