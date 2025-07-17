@@ -34,6 +34,7 @@ spirq = "1.2"
 vk-sync = { version = "0.5", package = "vk-sync-fork" } # // SEE: https://github.com/gwihlidal/vk-sync-rs/pull/4 -> https://github.com/expenses/vk-sync-rs
 
 [target.'cfg(target_os = "macos")'.dependencies]
+ash = { version = "0.38", default-features = false } # no "linked" feature on macOS
 ash-molten = "0.20"
 
 [dev-dependencies]
