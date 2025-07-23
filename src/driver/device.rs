@@ -43,6 +43,8 @@ pub struct Device {
     /// Vulkan instance pointer, which includes useful functions.
     pub instance: Instance,
 
+    pub(crate) debug_utils_fn: Option<ext::debug_utils::Device>,
+
     pipeline_cache: vk::PipelineCache,
 
     /// The physical device, which contains useful data about features, properties, and limits.
@@ -391,6 +393,12 @@ impl Device {
             .ray_tracing_pipeline
             .then(|| khr::ray_tracing_pipeline::Device::new(&instance, &device));
 
+        let debug_utils_fn = if debug {
+             Some(ext::debug_utils::Device::new(&instance, &device))
+         } else {
+             None
+         };
+
         let pipeline_cache =
             unsafe { device.create_pipeline_cache(&vk::PipelineCacheCreateInfo::default(), None) }
                 .map_err(|err| {
@@ -403,6 +411,7 @@ impl Device {
             accel_struct_ext,
             allocator: ManuallyDrop::new(Mutex::new(allocator)),
             device,
+            debug_utils_fn,
             instance,
             pipeline_cache,
             physical_device,

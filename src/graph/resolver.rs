@@ -554,6 +554,14 @@ impl Resolver {
                 RenderPass::framebuffer(render_pass, FramebufferInfo { attachments })?;
 
             unsafe {
+                if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                    debug_utils_fn.cmd_begin_debug_utils_label(
+                        **cmd_buf,
+                        &vk::DebugUtilsLabelEXT::default()
+                            .label_name(&std::ffi::CString::new(pass.name.clone()).unwrap()),
+                    )
+                }
+
                 cmd_buf.device.cmd_begin_render_pass(
                     **cmd_buf,
                     &vk::RenderPassBeginInfo::default()
@@ -675,6 +683,9 @@ impl Resolver {
         trace!("  end render pass");
 
         unsafe {
+            if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                debug_utils_fn.cmd_end_debug_utils_label(**cmd_buf)
+            }
             cmd_buf.device.cmd_end_render_pass(**cmd_buf);
         }
     }
