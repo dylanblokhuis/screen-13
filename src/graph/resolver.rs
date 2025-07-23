@@ -683,10 +683,10 @@ impl Resolver {
         trace!("  end render pass");
 
         unsafe {
+            cmd_buf.device.cmd_end_render_pass(**cmd_buf);
             if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
                 debug_utils_fn.cmd_end_debug_utils_label(**cmd_buf)
             }
-            cmd_buf.device.cmd_end_render_pass(**cmd_buf);
         }
     }
 
