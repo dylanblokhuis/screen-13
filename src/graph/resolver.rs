@@ -554,6 +554,14 @@ impl Resolver {
                 RenderPass::framebuffer(render_pass, FramebufferInfo { attachments })?;
 
             unsafe {
+                if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                    debug_utils_fn.cmd_begin_debug_utils_label(
+                        **cmd_buf,
+                        &vk::DebugUtilsLabelEXT::default()
+                            .label_name(&std::ffi::CString::new(pass.name.clone()).unwrap()),
+                    )
+                }
+
                 cmd_buf.device.cmd_begin_render_pass(
                     **cmd_buf,
                     &vk::RenderPassBeginInfo::default()
@@ -676,6 +684,9 @@ impl Resolver {
 
         unsafe {
             cmd_buf.device.cmd_end_render_pass(**cmd_buf);
+            if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                debug_utils_fn.cmd_end_debug_utils_label(**cmd_buf)
+            }
         }
     }
 
@@ -2278,13 +2289,17 @@ impl Resolver {
                         next_access,
                     );
 
+                    // Color Attachment Read/Write (blending) will prevent discarding contents.
+                    // Note that we must check "not-read" because some reads write!
+                    let discard_contents =
+                        *prev_access == AccessType::Nothing || !is_read_access(*next_access);
+
                     ImageBarrier {
                         next_accesses: from_ref(next_access),
                         next_layout: image_access_layout(*next_access),
                         previous_accesses: from_ref(prev_access),
                         previous_layout: image_access_layout(*prev_access),
-                        discard_contents: *prev_access == AccessType::Nothing
-                            || is_write_access(*next_access),
+                        discard_contents,
                         src_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         dst_queue_family_index: vk::QUEUE_FAMILY_IGNORED,
                         image: *image,
