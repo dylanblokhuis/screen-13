@@ -672,7 +672,9 @@ impl Resolver {
     }
 
     fn end_render_pass(&mut self, cmd_buf: &CommandBuffer) {
-        trace!("  end render pass");
+        unsafe {
+            cmd_buf.device.cmd_end_render_pass(**cmd_buf);
+        }
     }
 
     /// Returns `true` when all recorded passes have been submitted to a driver command buffer.
