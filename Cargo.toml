@@ -36,6 +36,10 @@ vk-sync = { version = "0.5", package = "vk-sync-fork" } # // SEE: https://github
 [target.'cfg(target_os = "macos")'.dependencies]
 ash-molten = "0.20"
 
+# on linux we load
+[target.'cfg(target_os = "linux")'.dependencies]
+ash = { version = "0.38", features = ["linked"] }
+
 [dev-dependencies]
 anyhow = "1.0"
 bmfont = { version = "0.3", default-features = false }
