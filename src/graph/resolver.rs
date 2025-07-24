@@ -554,14 +554,6 @@ impl Resolver {
                 RenderPass::framebuffer(render_pass, FramebufferInfo { attachments })?;
 
             unsafe {
-                if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
-                    debug_utils_fn.cmd_begin_debug_utils_label(
-                        **cmd_buf,
-                        &vk::DebugUtilsLabelEXT::default()
-                            .label_name(&std::ffi::CString::new(pass.name.clone()).unwrap()),
-                    )
-                }
-
                 cmd_buf.device.cmd_begin_render_pass(
                     **cmd_buf,
                     &vk::RenderPassBeginInfo::default()
@@ -681,13 +673,6 @@ impl Resolver {
 
     fn end_render_pass(&mut self, cmd_buf: &CommandBuffer) {
         trace!("  end render pass");
-
-        unsafe {
-            cmd_buf.device.cmd_end_render_pass(**cmd_buf);
-            if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
-                debug_utils_fn.cmd_end_debug_utils_label(**cmd_buf)
-            }
-        }
     }
 
     /// Returns `true` when all recorded passes have been submitted to a driver command buffer.
@@ -2434,6 +2419,16 @@ impl Resolver {
 
             trace!("recording pass [{}: {}]", pass_idx, pass.name);
 
+            if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                unsafe {
+                    debug_utils_fn.cmd_begin_debug_utils_label(
+                        **cmd_buf,
+                        &vk::DebugUtilsLabelEXT::default()
+                            .label_name(&std::ffi::CString::new(pass.name.clone()).unwrap()),
+                    )
+                }
+            }
+
             if !physical_pass.exec_descriptor_sets.is_empty() {
                 Self::write_descriptor_sets(cmd_buf, &self.graph.bindings, pass, physical_pass)?;
             }
@@ -2532,6 +2527,12 @@ impl Resolver {
 
             if is_graphic {
                 self.end_render_pass(cmd_buf);
+            }
+
+            if let Some(debug_utils_fn) = &cmd_buf.device.debug_utils_fn {
+                unsafe {
+                    debug_utils_fn.cmd_end_debug_utils_label(**cmd_buf);
+                }
             }
         }
 
