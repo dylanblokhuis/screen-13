@@ -57,7 +57,7 @@ pub struct Device {
 
     pub(super) surface_ext: Option<khr::surface::Instance>,
     pub(super) swapchain_ext: Option<khr::swapchain::Device>,
-    push_descriptor_ext: ash::khr::push_descriptor::Device,
+    pub push_descriptor_ext: ash::khr::push_descriptor::Device,
 }
 
 impl Device {
