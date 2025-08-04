@@ -57,6 +57,7 @@ pub struct Device {
 
     pub(super) surface_ext: Option<khr::surface::Instance>,
     pub(super) swapchain_ext: Option<khr::swapchain::Device>,
+    push_descriptor_ext: ash::khr::push_descriptor::Device,
 }
 
 impl Device {
@@ -393,11 +394,13 @@ impl Device {
             .ray_tracing_pipeline
             .then(|| khr::ray_tracing_pipeline::Device::new(&instance, &device));
 
+        let push_descriptor_ext = ash::khr::push_descriptor::Device::new(&instance, &device);
+
         let debug_utils_fn = if debug {
-             Some(ext::debug_utils::Device::new(&instance, &device))
-         } else {
-             None
-         };
+            Some(ext::debug_utils::Device::new(&instance, &device))
+        } else {
+            None
+        };
 
         let pipeline_cache =
             unsafe { device.create_pipeline_cache(&vk::PipelineCacheCreateInfo::default(), None) }
@@ -419,6 +422,7 @@ impl Device {
             ray_trace_ext,
             surface_ext,
             swapchain_ext,
+            push_descriptor_ext,
         })
     }
 
