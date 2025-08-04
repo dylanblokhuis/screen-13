@@ -102,6 +102,8 @@ impl Device {
             enabled_ext_names.push(ext::index_type_uint8::NAME.as_ptr());
         }
 
+        enabled_ext_names.push(khr::push_descriptor::NAME.as_ptr());
+
         let priorities = repeat_n(
             1.0,
             physical_device
