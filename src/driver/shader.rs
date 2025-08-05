@@ -975,7 +975,13 @@ impl Shader {
                 DescriptorType::StorageTexelBuffer(_access_ty) => {
                     DescriptorInfo::StorageTexelBuffer(binding_count)
                 }
-                DescriptorType::UniformBuffer() => DescriptorInfo::UniformBuffer(binding_count),
+                DescriptorType::UniformBuffer() => {
+                    if binding_count == 1 {
+                        DescriptorInfo::UniformBuffer(binding_count)
+                    } else {
+                        DescriptorInfo::StorageBuffer(binding_count)
+                    }
+                }
                 DescriptorType::UniformTexelBuffer() => {
                     DescriptorInfo::UniformTexelBuffer(binding_count)
                 }
