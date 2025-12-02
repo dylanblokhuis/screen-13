@@ -23,7 +23,9 @@ use {
 };
 
 #[cfg(target_os = "macos")]
-use std::env::set_var;
+use {
+    ash::khr::get_physical_device_properties2, ash::khr::portability_enumeration, std::env::set_var,
+};
 
 #[cfg(not(target_os = "macos"))]
 unsafe extern "system" fn vulkan_debug_callback(
@@ -136,11 +138,7 @@ impl Instance {
             set_var("MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", "1");
         }
 
-        #[cfg(not(target_os = "macos"))]
         let entry = Entry::linked();
-
-        #[cfg(target_os = "macos")]
-        let entry = ash_molten::load();
 
         let required_extensions = required_extensions.collect::<Vec<_>>();
         let instance_extensions = required_extensions
@@ -157,7 +155,12 @@ impl Instance {
         let instance_desc = vk::InstanceCreateInfo::default()
             .application_info(&app_desc)
             .enabled_layer_names(&layer_names)
-            .enabled_extension_names(&instance_extensions);
+            .enabled_extension_names(&instance_extensions)
+            .flags(if cfg!(any(target_os = "macos", target_os = "ios")) {
+                vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR
+            } else {
+                vk::InstanceCreateFlags::default()
+            });
 
         let instance = unsafe {
             entry.create_instance(&instance_desc, None).map_err(|_| {
@@ -257,6 +260,12 @@ impl Instance {
             #[allow(deprecated)]
             res.push(ext::debug_report::NAME.as_ptr());
             res.push(ext::debug_utils::NAME.as_ptr());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            res.push(portability_enumeration::NAME.as_ptr());
+            res.push(get_physical_device_properties2::NAME.as_ptr());
         }
 
         res

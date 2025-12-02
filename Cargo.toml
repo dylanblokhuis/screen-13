@@ -20,10 +20,9 @@ profile-with-superluminal = ["profiling/profile-with-superluminal"]
 profile-with-tracy = ["profiling/profile-with-tracy"]
 
 [dependencies]
-ash = "0.38"
 ash-window = "0.13"
 derive_builder = "0.20"
-gpu-allocator = "0.27"
+gpu-allocator = "0.28"
 log = "0.4"
 ordered-float = "5.0"
 parking_lot = { version = "0.12", optional = true }
@@ -32,12 +31,6 @@ profiling = "1.0"
 raw-window-handle = "0.6"
 spirq = "1.2"
 vk-sync = { version = "0.5", package = "vk-sync-fork" } # // SEE: https://github.com/gwihlidal/vk-sync-rs/pull/4 -> https://github.com/expenses/vk-sync-rs
-
-[target.'cfg(target_os = "macos")'.dependencies]
-ash-molten = "0.20"
-
-# on linux we load
-[target.'cfg(target_os = "linux")'.dependencies]
 ash = { version = "0.38", features = ["linked"] }
 
 [dev-dependencies]
