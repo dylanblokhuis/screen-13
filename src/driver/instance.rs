@@ -276,13 +276,9 @@ impl Instance {
         this.debug_utils.is_some()
     }
 
-    fn layer_names(
-        #[cfg_attr(target_os = "macos", allow(unused_variables))] debug: bool,
-    ) -> Vec<CString> {
-        #[cfg_attr(target_os = "macos", allow(unused_mut))]
+    fn layer_names(debug: bool) -> Vec<CString> {
         let mut res = vec![];
 
-        #[cfg(not(target_os = "macos"))]
         if debug {
             res.push(CString::new("VK_LAYER_KHRONOS_validation").unwrap());
         }
