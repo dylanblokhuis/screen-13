@@ -13,7 +13,7 @@ use {
     raw_window_handle::HasDisplayHandle,
     std::{
         cmp::Ordering,
-        ffi::CStr,
+        ffi::{CStr, CString},
         fmt::{Debug, Formatter},
         iter::{empty, repeat_n},
         mem::{ManuallyDrop, forget},
@@ -189,6 +189,21 @@ impl Device {
             features = features
                 .push_next(&mut amd_coherent_mem)
                 .push_next(&mut synchronization2_features);
+        }
+
+        // VK_KHR_portability_subset must be enabled if available (required on macOS/MoltenVK)
+        let supports_portability_subset = extension_names
+            .iter()
+            .any(|ext| *ext == "VK_KHR_portability_subset");
+
+        let portability_subset_name = if supports_portability_subset {
+            Some(CString::new("VK_KHR_portability_subset").unwrap())
+        } else {
+            None
+        };
+
+        if let Some(ref name) = portability_subset_name {
+            enabled_ext_names.push(name.as_ptr());
         }
 
         unsafe { get_physical_device_features2(**physical_device, &mut features) };
