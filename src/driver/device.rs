@@ -541,6 +541,20 @@ impl Device {
 
         Ok(())
     }
+
+    /// Retrieves a Vulkan queue from the device.
+    ///
+    /// # Arguments
+    ///
+    /// * `queue_family_index` - The index of the queue family.
+    /// * `queue_index` - The index of the queue within the queue family.
+    ///
+    /// # Returns
+    ///
+    /// The Vulkan queue handle.
+    pub fn get_queue(this: &Self, queue_family_index: usize, queue_index: usize) -> vk::Queue {
+        this.queues[queue_family_index][queue_index]
+    }
 }
 
 impl Debug for Device {
