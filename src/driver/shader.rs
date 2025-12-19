@@ -2,7 +2,7 @@
 
 use {
     super::{DescriptorSetLayout, DriverError, VertexInputState, device::Device},
-    ash::vk,
+    ash::vk::{self, TaggedStructure},
     derive_builder::{Builder, UninitializedFieldError},
     log::{debug, error, trace, warn},
     ordered_float::OrderedFloat,
@@ -311,7 +311,7 @@ impl PipelineDescriptorInfo {
             };
 
             if let Some(bindless_flags) = bindless_flags.as_mut() {
-                create_info = create_info.push_next(bindless_flags);
+                create_info = create_info.push(bindless_flags);
             }
 
             layouts.insert(
@@ -367,7 +367,7 @@ impl Sampler {
                         .max_lod(info.max_lod.0)
                         .border_color(info.border_color)
                         .unnormalized_coordinates(info.unnormalized_coordinates)
-                        .push_next(
+                        .push(
                             &mut vk::SamplerReductionModeCreateInfo::default()
                                 .reduction_mode(info.reduction_mode),
                         ),

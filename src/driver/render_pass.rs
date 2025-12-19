@@ -2,7 +2,7 @@
 
 use {
     super::{DepthStencilMode, DriverError, GraphicPipeline, SampleCount, device::Device},
-    ash::vk,
+    ash::vk::{self, TaggedStructure},
     log::{trace, warn},
     std::{
         collections::{HashMap, hash_map::Entry},
@@ -210,7 +210,7 @@ impl RenderPass {
             }
 
             if let Some(depth_stencil_resolve) = depth_stencil_resolve {
-                desc = desc.push_next(depth_stencil_resolve);
+                desc = desc.push(depth_stencil_resolve);
             }
 
             subpasses.push(
@@ -293,7 +293,7 @@ impl RenderPass {
             .width(attachments[0].width)
             .height(attachments[0].height)
             .layers(layers)
-            .push_next(&mut imageless_info);
+            .push(&mut imageless_info);
         create_info.attachment_count = this.info.attachments.len() as _;
 
         let framebuffer = unsafe {

@@ -152,7 +152,7 @@ pub const fn format_texel_block_size(fmt: vk::Format) -> u32 {
         | vk::Format::B8G8R8_SRGB => 3,
         vk::Format::R10X6G10X6_UNORM_2PACK16
         | vk::Format::R12X4G12X4_UNORM_2PACK16
-        | vk::Format::R16G16_S10_5_NV
+        | vk::Format::R16G16_SFIXED5_NV
         | vk::Format::R8G8B8A8_UNORM
         | vk::Format::R8G8B8A8_SNORM
         | vk::Format::R8G8B8A8_USCALED
@@ -412,7 +412,7 @@ pub const fn format_texel_block_extent(vk_format: vk::Format) -> (u32, u32) {
         | vk::Format::B8G8R8_SRGB
         | vk::Format::R10X6G10X6_UNORM_2PACK16
         | vk::Format::R12X4G12X4_UNORM_2PACK16
-        | vk::Format::R16G16_S10_5_NV
+        | vk::Format::R16G16_SFIXED5_NV
         | vk::Format::R8G8B8A8_UNORM
         | vk::Format::R8G8B8A8_SNORM
         | vk::Format::R8G8B8A8_USCALED

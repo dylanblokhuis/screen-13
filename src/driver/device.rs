@@ -2,7 +2,10 @@
 
 use {
     super::{DriverError, Instance, physical_device::PhysicalDevice},
-    ash::{ext, khr, vk},
+    ash::{
+        VkResult, ext, khr,
+        vk::{self, TaggedStructure},
+    },
     ash_window::enumerate_required_extensions,
     derive_builder::{Builder, UninitializedFieldError},
     gpu_allocator::{
@@ -75,9 +78,9 @@ impl Device {
         physical_device: &PhysicalDevice,
         display_window: bool,
         create_fn: F,
-    ) -> ash::prelude::VkResult<ash::Device>
+    ) -> VkResult<ash::Device>
     where
-        F: FnOnce(vk::DeviceCreateInfo) -> ash::prelude::VkResult<ash::Device>,
+        F: FnOnce(vk::DeviceCreateInfo) -> VkResult<ash::Device>,
     {
         let mut enabled_ext_names = Vec::with_capacity(6);
 
@@ -103,6 +106,9 @@ impl Device {
         }
 
         enabled_ext_names.push(khr::push_descriptor::NAME.as_ptr());
+        enabled_ext_names.push(unsafe {
+            CStr::from_bytes_with_nul_unchecked(b"VK_EXT_external_memory_metal\0").as_ptr()
+        });
 
         let priorities = repeat_n(
             1.0,
@@ -141,23 +147,23 @@ impl Device {
         let mut ray_query_features = vk::PhysicalDeviceRayQueryFeaturesKHR::default();
         let mut ray_trace_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::default();
         let mut features = vk::PhysicalDeviceFeatures2::default()
-            .push_next(&mut features_v1_1)
-            .push_next(&mut features_v1_2);
+            .push(&mut features_v1_1)
+            .extend(&mut features_v1_2);
 
         if physical_device.accel_struct_properties.is_some() {
-            features = features.push_next(&mut acceleration_structure_features);
+            features = features.extend(&mut acceleration_structure_features);
         }
 
         if physical_device.ray_query_features.ray_query {
-            features = features.push_next(&mut ray_query_features);
+            features = features.extend(&mut ray_query_features);
         }
 
         if physical_device.ray_trace_features.ray_tracing_pipeline {
-            features = features.push_next(&mut ray_trace_features);
+            features = features.extend(&mut ray_trace_features);
         }
 
         if physical_device.index_type_uint8_features.index_type_uint8 {
-            features = features.push_next(&mut index_type_uint8_features);
+            features = features.extend(&mut index_type_uint8_features);
         }
 
         let extensions = unsafe {
@@ -187,8 +193,8 @@ impl Device {
             enabled_ext_names.push(ash::amd::device_coherent_memory::NAME.as_ptr());
             enabled_ext_names.push(ash::khr::synchronization2::NAME.as_ptr());
             features = features
-                .push_next(&mut amd_coherent_mem)
-                .push_next(&mut synchronization2_features);
+                .extend(&mut amd_coherent_mem)
+                .extend(&mut synchronization2_features);
         }
 
         // VK_KHR_portability_subset must be enabled if available (required on macOS/MoltenVK)
@@ -211,7 +217,7 @@ impl Device {
         let device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_infos)
             .enabled_extension_names(&enabled_ext_names)
-            .push_next(&mut features);
+            .extend(&mut features);
 
         create_fn(device_create_info)
     }
@@ -401,21 +407,22 @@ impl Device {
         }
 
         let surface_ext = display_window
-            .then(|| khr::surface::Instance::new(Instance::entry(&instance), &instance));
-        let swapchain_ext = display_window.then(|| khr::swapchain::Device::new(&instance, &device));
+            .then(|| khr::surface::Instance::load(Instance::entry(&instance), &instance));
+        let swapchain_ext =
+            display_window.then(|| khr::swapchain::Device::load(&instance, &device));
         let accel_struct_ext = physical_device
             .accel_struct_properties
             .is_some()
-            .then(|| khr::acceleration_structure::Device::new(&instance, &device));
+            .then(|| khr::acceleration_structure::Device::load(&instance, &device));
         let ray_trace_ext = physical_device
             .ray_trace_features
             .ray_tracing_pipeline
-            .then(|| khr::ray_tracing_pipeline::Device::new(&instance, &device));
+            .then(|| khr::ray_tracing_pipeline::Device::load(&instance, &device));
 
-        let push_descriptor_ext = ash::khr::push_descriptor::Device::new(&instance, &device);
+        let push_descriptor_ext = ash::khr::push_descriptor::Device::load(&instance, &device);
 
         let debug_utils_fn = if debug {
-            Some(ext::debug_utils::Device::new(&instance, &device))
+            Some(ext::debug_utils::Device::load(&instance, &device))
         } else {
             None
         };

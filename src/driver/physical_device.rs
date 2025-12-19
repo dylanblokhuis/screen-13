@@ -2,7 +2,10 @@
 
 use {
     super::{DriverError, Instance},
-    ash::{ext, khr, vk},
+    ash::{
+        ext, khr,
+        vk::{self, TaggedStructure},
+    },
     log::{debug, error},
     std::{
         collections::HashSet,
@@ -235,12 +238,12 @@ impl PhysicalDevice {
         let mut ray_query_features = vk::PhysicalDeviceRayQueryFeaturesKHR::default();
         let mut ray_trace_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR::default();
         let mut features = vk::PhysicalDeviceFeatures2::default()
-            .push_next(&mut features_v1_1)
-            .push_next(&mut features_v1_2)
-            .push_next(&mut acceleration_structure_features)
-            .push_next(&mut index_type_u8_features)
-            .push_next(&mut ray_query_features)
-            .push_next(&mut ray_trace_features);
+            .push(&mut features_v1_1)
+            .push(&mut features_v1_2)
+            .push(&mut acceleration_structure_features)
+            .push(&mut index_type_u8_features)
+            .push(&mut ray_query_features)
+            .push(&mut ray_trace_features);
         unsafe {
             get_physical_device_features2(physical_device, &mut features);
         }
@@ -259,12 +262,12 @@ impl PhysicalDevice {
         let mut sampler_filter_minmax_properties =
             vk::PhysicalDeviceSamplerFilterMinmaxProperties::default();
         let mut properties = vk::PhysicalDeviceProperties2::default()
-            .push_next(&mut properties_v1_1)
-            .push_next(&mut properties_v1_2)
-            .push_next(&mut accel_struct_properties)
-            .push_next(&mut depth_stencil_resolve_properties)
-            .push_next(&mut ray_trace_properties)
-            .push_next(&mut sampler_filter_minmax_properties);
+            .push(&mut properties_v1_1)
+            .push(&mut properties_v1_2)
+            .push(&mut accel_struct_properties)
+            .push(&mut depth_stencil_resolve_properties)
+            .push(&mut ray_trace_properties)
+            .push(&mut sampler_filter_minmax_properties);
         unsafe {
             get_physical_device_properties2(physical_device, &mut properties);
         }

@@ -21,7 +21,7 @@ use {
         },
         pool::{Lease, Pool},
     },
-    ash::vk,
+    ash::vk::{self, TaggedStructure},
     log::{
         Level::{Debug, Trace},
         debug, log_enabled, trace,
@@ -570,7 +570,7 @@ impl Resolver {
                             },
                         })
                         .clear_values(clear_values)
-                        .push_next(
+                        .extend(
                             &mut vk::RenderPassAttachmentBeginInfoKHR::default()
                                 .attachments(image_views),
                         ),

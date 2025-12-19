@@ -3,7 +3,7 @@
 use {
     super::{DriverError, Instance, device::Device},
     ash::vk,
-    ash_window::create_surface,
+    ash_window::SurfaceFactory,
     log::warn,
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     std::{
@@ -57,13 +57,7 @@ impl Surface {
             DriverError::Unsupported
         })?;
         let surface = unsafe {
-            create_surface(
-                Instance::entry(instance),
-                instance,
-                display_handle.as_raw(),
-                window_handle.as_raw(),
-                None,
-            )
+            SurfaceFactory::new(Instance::entry(instance), instance, display_handle.as_raw())
         }
         .map_err(|err| {
             warn!("Unable to create surface: {err}");
@@ -71,6 +65,15 @@ impl Surface {
             DriverError::Unsupported
         })?;
 
+        let surface = unsafe {
+            surface
+                .create_surface(window_handle.as_raw(), None)
+                .map_err(|err| {
+                    warn!("Unable to create surface: {err}");
+
+                    DriverError::Unsupported
+                })?
+        };
         Ok(Self { device, surface })
     }
 
