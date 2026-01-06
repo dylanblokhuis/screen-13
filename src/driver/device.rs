@@ -59,9 +59,78 @@ pub struct Device {
     pub(super) swapchain_ext: Option<khr::swapchain::Device>,
     /// The push descriptor extension
     pub push_descriptor_ext: ash::khr::push_descriptor::Device,
+    enabled_extensions: Vec<String>,
 }
 
 impl Device {
+    /// Collects the enabled device extension names as strings.
+    fn collect_enabled_extension_names(
+        instance: &Instance,
+        physical_device: &PhysicalDevice,
+        display_window: bool,
+    ) -> Vec<String> {
+        let mut enabled_ext_names = Vec::with_capacity(6);
+
+        if display_window {
+            enabled_ext_names.push(khr::swapchain::NAME.to_string_lossy().into_owned());
+        }
+
+        if physical_device.accel_struct_properties.is_some() {
+            enabled_ext_names.push(khr::acceleration_structure::NAME.to_string_lossy().into_owned());
+            enabled_ext_names.push(khr::deferred_host_operations::NAME.to_string_lossy().into_owned());
+        }
+
+        if physical_device.ray_query_features.ray_query {
+            enabled_ext_names.push(khr::ray_query::NAME.to_string_lossy().into_owned());
+        }
+
+        if physical_device.ray_trace_features.ray_tracing_pipeline {
+            enabled_ext_names.push(khr::ray_tracing_pipeline::NAME.to_string_lossy().into_owned());
+        }
+
+        if physical_device.index_type_uint8_features.index_type_uint8 {
+            enabled_ext_names.push(ext::index_type_uint8::NAME.to_string_lossy().into_owned());
+        }
+
+        enabled_ext_names.push(khr::push_descriptor::NAME.to_string_lossy().into_owned());
+
+        let extensions = unsafe {
+            instance.enumerate_device_extension_properties(physical_device.physical_device).ok()
+        };
+        if let Some(extensions) = extensions {
+            let extension_names: Vec<String> = extensions
+                .iter()
+                .map(|extension| unsafe {
+                    CStr::from_ptr(extension.extension_name.as_ptr())
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                })
+                .collect();
+
+            // check for coherent memory extension if amd device
+            let is_amd = extension_names
+                .iter()
+                .any(|ext| *ext == "VK_AMD_device_coherent_memory");
+
+            if is_amd {
+                enabled_ext_names.push(ash::amd::device_coherent_memory::NAME.to_string_lossy().into_owned());
+                enabled_ext_names.push(ash::khr::synchronization2::NAME.to_string_lossy().into_owned());
+            }
+
+            // VK_KHR_portability_subset must be enabled if available (required on macOS/MoltenVK)
+            let supports_portability_subset = extension_names
+                .iter()
+                .any(|ext| *ext == "VK_KHR_portability_subset");
+
+            if supports_portability_subset {
+                enabled_ext_names.push("VK_KHR_portability_subset".to_string());
+            }
+        }
+
+        enabled_ext_names
+    }
+
     /// Prepares device creation information and calls the provided callback to allow an application
     /// to control the device creation process.
     ///
@@ -240,6 +309,12 @@ impl Device {
 
         let physical_device = physical_devices.remove(phyical_device_idx);
 
+        let enabled_extensions = Self::collect_enabled_extension_names(
+            &instance,
+            &physical_device,
+            display_window,
+        );
+
         let device = unsafe {
             Self::create_ash_device(
                 &instance,
@@ -258,7 +333,7 @@ impl Device {
 
         info!("created {}", physical_device.properties_v1_0.device_name);
 
-        Self::load(instance, physical_device, device, display_window)
+        Self::load(instance, physical_device, device, display_window, enabled_extensions)
     }
 
     /// Constructs a new device using the given configuration.
@@ -366,6 +441,7 @@ impl Device {
         physical_device: PhysicalDevice,
         device: ash::Device,
         display_window: bool,
+        enabled_extensions: Vec<String>,
     ) -> Result<Self, DriverError> {
         let debug = Instance::is_debug(&instance);
         let mut debug_settings = AllocatorDebugSettings::default();
@@ -441,6 +517,7 @@ impl Device {
             surface_ext,
             swapchain_ext,
             push_descriptor_ext,
+            enabled_extensions,
         })
     }
 
@@ -554,6 +631,11 @@ impl Device {
     /// The Vulkan queue handle.
     pub fn get_queue(this: &Self, queue_family_index: usize, queue_index: usize) -> vk::Queue {
         this.queues[queue_family_index][queue_index]
+    }
+
+    /// Returns the names of all enabled device extensions.
+    pub fn enabled_extensions(this: &Self) -> &[String] {
+        &this.enabled_extensions
     }
 }
 

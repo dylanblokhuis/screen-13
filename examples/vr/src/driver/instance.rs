@@ -204,7 +204,7 @@ impl Instance {
                     InstanceCreateError::VulkanUnsupported
                 })?;
             let device = Arc::new(
-                Device::load(vk_instance, vk_physical_device, device, true).map_err(|err| {
+                Device::load(vk_instance, vk_physical_device, device, true, Vec::new()).map_err(|err| {
                     error!("Vulkan device: {err}");
 
                     InstanceCreateError::VulkanUnsupported

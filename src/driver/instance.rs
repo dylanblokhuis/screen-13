@@ -123,6 +123,7 @@ pub struct Instance {
     debug_utils: Option<ext::debug_utils::Instance>,
     entry: Entry,
     instance: ash::Instance,
+    enabled_extensions: Vec<String>,
 }
 
 impl Instance {
@@ -141,10 +142,20 @@ impl Instance {
         let entry = Entry::linked();
 
         let required_extensions = required_extensions.collect::<Vec<_>>();
+        let enabled_extension_names = unsafe { Self::extension_names(debug) };
+        let enabled_extension_strings: Vec<String> = enabled_extension_names
+            .iter()
+            .map(|&ptr| unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned())
+            .collect();
+        let mut all_enabled_extensions: Vec<String> = required_extensions
+            .iter()
+            .map(|ext| ext.to_string_lossy().into_owned())
+            .collect();
+        all_enabled_extensions.extend(enabled_extension_strings);
         let instance_extensions = required_extensions
             .iter()
             .map(|ext| ext.as_ptr())
-            .chain(unsafe { Self::extension_names(debug).into_iter() })
+            .chain(enabled_extension_names.into_iter())
             .collect::<Box<[_]>>();
         let layer_names = Self::layer_names(debug);
         let layer_names: Vec<*const c_char> = layer_names
@@ -220,6 +231,7 @@ impl Instance {
             debug_utils,
             entry,
             instance,
+            enabled_extensions: all_enabled_extensions,
         })
     }
 
@@ -241,6 +253,7 @@ impl Instance {
             debug_utils: None,
             entry,
             instance,
+            enabled_extensions: Vec::new(),
         })
     }
 
@@ -274,6 +287,11 @@ impl Instance {
     /// Returns `true` if this instance was created with debug layers enabled.
     pub fn is_debug(this: &Self) -> bool {
         this.debug_utils.is_some()
+    }
+
+    /// Returns the names of all enabled instance extensions.
+    pub fn enabled_extensions(this: &Self) -> &[String] {
+        &this.enabled_extensions
     }
 
     fn layer_names(debug: bool) -> Vec<CString> {
