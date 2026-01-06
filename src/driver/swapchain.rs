@@ -470,7 +470,8 @@ pub enum SwapchainError {
 #[derive(Debug)]
 pub struct SwapchainImage {
     pub(crate) exec_idx: usize,
-    image: Image,
+    /// The image associated with this swapchain image.
+    pub image: Image,
     image_idx: u32,
 }
 
